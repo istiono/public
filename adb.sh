@@ -25,14 +25,14 @@ adb_sync_check() {
     if [[ "$src" =~ ^adb: ]]; then src_is_android=true; src="${src#adb:}"; fi
     if [[ "$dest" =~ ^adb: ]]; then dest_is_android=true; dest="${dest#adb:}"; fi
 
-    # --- NEW: Interactive prompt if user wasn't passed via flag ---
+    # Interactive prompt if user wasn't passed via flag
     if [ "$src_is_android" = true ] || [ "$dest_is_android" = true ]; then
         if [ -z "$TARGET_USER" ]; then
             read -p "👤 Enter Android User (e.g. root, 0, 10, or leave blank for default): " TARGET_USER
         fi
     fi
 
-    # Helper function to wrap ADB shell commands
+    # Helper function to wrap ADB shell commands for execution
     adb_shell_run() {
         if [ -n "$TARGET_USER" ]; then
             adb shell "su $TARGET_USER -c \"$1\""
@@ -55,16 +55,15 @@ adb_sync_check() {
         echo "🚀 Copying file..."
         if [ "$src_is_android" = true ] && [ "$dest_is_android" = false ]; then
             if [ -n "$TARGET_USER" ]; then
-                adb_shell_run "cp \"$src\" /data/local/tmp/sync_tmp && chmod 666 /data/local/tmp/sync_tmp" 2>/dev/null
-                adb pull "/data/local/tmp/sync_tmp" "$dest_file"
-                adb_shell_run "rm /data/local/tmp/sync_tmp" 2>/dev/null
+                # Stream out of Android using su + cat directly to a local file
+                adb shell "su $TARGET_USER -c \"cat '$src'\"" > "$dest_file"
             else
                 adb pull "$src" "$dest_file"
             fi
         elif [ "$src_is_android" = false ] && [ "$dest_is_android" = true ]; then
             if [ -n "$TARGET_USER" ]; then
-                adb push "$src" "/data/local/tmp/sync_tmp"
-                adb_shell_run "mv /data/local/tmp/sync_tmp \"$dest_file\" && chown $TARGET_USER \"$dest_file\""
+                # Stream into Android by piping the local file directly into su + cat
+                adb shell "su $TARGET_USER -c \"cat > '$dest_file'\"" < "$src"
             else
                 adb push "$src" "$dest_file"
             fi
@@ -122,50 +121,5 @@ adb_sync_check() {
     else
         echo "❌ ERROR: Hashes DO NOT match! Deletion aborted to prevent data loss."
         return 1
-    fi
-}
-
-adb_sha256() {
-    local OPTIND opt TARGET_USER=""
-    
-    while getopts "u:" opt; do
-        case ${opt} in
-            u) TARGET_USER=$OPTARG ;;
-            *) echo "Usage: adb_sha256 [-u user] /path/to/remote/file.ext"; return 1 ;;
-        esac
-    done
-    shift $((OPTIND -1))
-
-    if [ -z "$1" ]; then
-        echo "Error: Missing remote file path."
-        return 1
-    fi
-
-    # --- NEW: Interactive prompt if user wasn't passed via flag ---
-    if [ -z "$TARGET_USER" ]; then
-        read -p "👤 Enter Android User (e.g. root, 0, 10, or leave blank for default): " TARGET_USER
-    fi
-
-    local REMOTE_FILE="$1"
-    local SHA_FILE="${REMOTE_FILE}.sha256"
-
-    echo "Calculating SHA-256 for: $REMOTE_FILE $([ -n "$TARGET_USER" ] && echo "(as user: $TARGET_USER)")"
-    
-    if [ -n "$TARGET_USER" ]; then
-        adb shell "su $TARGET_USER -c \"sha256sum '$REMOTE_FILE' > '$SHA_FILE'\""
-    else
-        adb shell "sha256sum '$REMOTE_FILE' > '$SHA_FILE'"
-    fi
-
-    if [ $? -eq 0 ]; then
-        echo "Successfully created side-car file: $SHA_FILE"
-        echo -n "Hash value: "
-        if [ -n "$TARGET_USER" ]; then
-            adb shell "su $TARGET_USER -c \"cat '$SHA_FILE'\""
-        else
-            adb shell "cat '$SHA_FILE'"
-        fi
-    else
-        echo "Failed to create hash. Check file path or permissions."
     fi
 }
