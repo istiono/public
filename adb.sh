@@ -94,3 +94,27 @@ adb_sync_check() {
         return 1
     fi
 }
+adb_sha256() {
+    if [ -z "$1" ]; then
+        echo "Error: Missing remote file path."
+        echo "Usage: adb_sha256 /path/to/remote/file.ext"
+        return 1
+    fi
+
+    local REMOTE_FILE="$1"
+    local SHA_FILE="${REMOTE_FILE}.sha256"
+
+    echo "Calculating SHA-256 for: $REMOTE_FILE"
+    
+    # Run the hash on Android and write the output side-by-side
+    adb shell "sha256sum '$REMOTE_FILE' > '$SHA_FILE'"
+
+    if [ $? -eq 0 ]; then
+        echo "Successfully created side-car file: $SHA_FILE"
+        # Print the contents to verify
+        echo -n "Hash value: "
+        adb shell "cat '$SHA_FILE'"
+    else
+        echo "Failed to create hash. Check file path or permissions."
+    fi
+}
