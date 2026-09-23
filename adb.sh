@@ -1,3 +1,4 @@
+ compgen -c | egrep adb_sync_check
 adb_sync_check() {
     # Usage check
     if [ -z "$1" ]; then
@@ -94,6 +95,7 @@ adb_sync_check() {
         return 1
     fi
 }
+ compgen -c | egrep adb_sha256
 adb_sha256() {
     if [ -z "$1" ]; then
         echo "Error: Missing remote file path."
