@@ -35,7 +35,14 @@ adb_sync_check() {
     # Helper function to wrap ADB shell commands for execution
     adb_shell_run() {
         if [ -n "$TARGET_USER" ]; then
-            adb shell "su $TARGET_USER -c \"$1\""
+            # Verify if su is accessible on the device before executing
+            if adb shell "which su" >/dev/null 2>&1; then
+                adb shell "su $TARGET_USER -c \"$1\""
+            else
+                echo "⚠️  Warning: 'su' binary is inaccessible or not found on the device."
+                echo "    Falling back to default adb shell user context..."
+                adb shell "$1"
+            fi
         else
             adb shell "$1"
         fi
