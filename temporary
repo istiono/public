@@ -187,5 +187,5 @@ zip_by_date() {
     # Safely update the ZIP file's timestamp to 23:59:59 using Android's native format (YYYYMMDD.hhmmss)
     touch -t "${input_date}.235959" "$output_zip"
     
-    echo "Succe5ss! Created archive: $output_zip"
+    echo "Success! Created archive: $output_zip"
 }
