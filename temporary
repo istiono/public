@@ -127,3 +127,65 @@ zip_by_date() {
     touch -d "${target_date} 23:59:59" "$output_zip"
     echo "Success! Created archive: $output_zip"
 }
+zip_by_date() {
+    if [ -z "$1" ] || [ ${#1} -ne 8 ]; then
+        echo "Error: Please provide a date in YYYYMMDD format (e.g., 20260925)."
+        return 1
+    fi
+
+    input_date="$1"
+    suffix="$2" 
+    target_date="${input_date:0:4}-${input_date:4:2}-${input_date:6:2}"
+    
+    # Auto-detect correct storage path
+    if [ -d "/storage/emulated/0/DCIM/Camera" ]; then
+        dir="/storage/emulated/0/DCIM/Camera"
+    elif [ -d "/storage/emulated/10/DCIM/Camera" ]; then
+        dir="/storage/emulated/10/DCIM/Camera"
+    elif [ -d "/sdcard/DCIM/Camera" ]; then
+        dir="/sdcard/DCIM/Camera"
+    else
+        echo "Error: Camera directory not found."
+        return 1
+    fi
+
+    output_zip="${dir}/${input_date}${suffix}.zip"
+    cd "$dir" || { echo "Error: Cannot change directory to $dir"; return 1; }
+
+    echo "Scanning directly for files from date: ${input_date}..."
+
+    file_args=""
+
+    # Target specific patterns matching the date argument directly
+    for f in *"${input_date}"*; do
+        # Make sure it's a file, and not an existing zip/sha256 file
+        if [ -f "$f" ] && [ "${f##*.}" != "sha256" ] && [ "${f##*.}" != "zip" ]; then
+            
+            # Generate the SHA256 hash file
+            if command -v sha256sum >/dev/null 2>&1; then
+                sha256sum "$f" > "$f.sha256"
+            else
+                shasum -a 256 "$f" > "$f.sha256"
+            fi
+            
+            # Match the timestamp of the hash file to the master file
+            touch -r "$f" "$f.sha256"
+
+            # Append both files to the archive list buffer
+            file_args="$file_args \"$f\" \"$f.sha256\""
+        fi
+    done
+
+    if [ -z "$file_args" ]; then
+        echo "No files found matching the pattern *${input_date}*."
+        return 0
+    fi
+
+    echo "Creating archive with zero compression..."
+    eval "zip -0 \"$output_zip\" $file_args"
+
+    # Safely update the ZIP file's timestamp to 23:59:59 using Android's native format (YYYYMMDD.hhmmss)
+    touch -t "${input_date}.235959" "$output_zip"
+    
+    echo "Success! Created archive: $output_zip"
+}
