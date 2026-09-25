@@ -67,3 +67,63 @@ zip_by_date() {
 
     echo "Success! Created archive: ${output_zip}"
 }
+zip_by_date() {
+    if [ -z "$1" ] || [ ${#1} -ne 8 ]; then
+        echo "Error: Please provide a date in YYYYMMDD format (e.g., 20260925)."
+        return 1
+    fi
+
+    input_date="$1"
+    suffix="$2" 
+    target_date="${input_date:0:4}-${input_date:4:2}-${input_date:6:2}"
+    
+    # Auto-detect correct storage path (0 is primary user, 10 is secondary profile)
+    if [ -d "/storage/emulated/0/DCIM/Camera" ]; then
+        dir="/storage/emulated/0/DCIM/Camera"
+    elif [ -d "/storage/emulated/10/DCIM/Camera" ]; then
+        dir="/storage/emulated/10/DCIM/Camera"
+    elif [ -d "/sdcard/DCIM/Camera" ]; then
+        dir="/sdcard/DCIM/Camera"
+    else
+        echo "Error: Camera directory not found anywhere."
+        return 1
+    fi
+
+    output_zip="${dir}/${input_date}${suffix}.zip"
+
+    cd "$dir" || { echo "Error: Cannot change directory to $dir"; return 1; }
+
+    echo "Processing files in: $dir for date: ${target_date}..."
+
+    touch -d "${target_date} 00:00:00" .start_time
+    touch -d "${target_date} 23:59:59" .end_time
+
+    file_args=""
+
+    for f in *; do
+        if [ -f "$f" ] && [ "${f##*.}" != "sha256" ] && [ "${f##*.}" != "zip" ]; then
+            if [ "$f" -nt .start_time ] && [ ! "$f" -nt .end_time ]; then
+                if command -v sha256sum >/dev/null 2>&1; then
+                    sha256sum "$f" > "$f.sha256"
+                else
+                    shasum -a 256 "$f" > "$f.sha256"
+                fi
+                touch -r "$f" "$f.sha256"
+                file_args="$file_args \"$f\" \"$f.sha256\""
+            fi
+        fi
+    done
+
+    rm -f .start_time .end_time
+
+    if [ -z "$file_args" ]; then
+        echo "No files found matching the date ${input_date}."
+        return 0
+    fi
+
+    echo "Creating archive with zero compression..."
+    eval "zip -0 \"$output_zip\" $file_args"
+
+    touch -d "${target_date} 23:59:59" "$output_zip"
+    echo "Success! Created archive: $output_zip"
+}
