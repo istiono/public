@@ -1,13 +1,22 @@
- compgen -c | egrep clean_firefox_dir
+ compgen -c | egrep 
 clean_firefox_dir() {
     # 1. Ensure an argument is provided
     if [ -z "$1" ]; then
-        echo "Error: Please provide a folder name inside ~/.mozilla/firefox/."
+        echo "Error: Please provide a folder name or full path inside ~/.mozilla/firefox/."
         return 1
     fi
 
-    # 2. Construct and resolve the absolute target path
-    local target_dir="$HOME/.mozilla/firefox/$1"
+    # 2. Smart Path Resolution: Clean up the input argument
+    local input_path="$1"
+    
+    # Replace literal '~' character string with the actual $HOME environment variable path
+    input_path="${input_path/#\~/$HOME}"
+    
+    # Extract just the folder name if they passed the whole path prefix
+    local target_folder="${input_path#$HOME/.mozilla/firefox/}"
+
+    # Construct the final absolute target path
+    local target_dir="$HOME/.mozilla/firefox/$target_folder"
 
     # 3. Safety checks: Ensure the directory exists and is actually inside the Firefox profile
     if [ ! -d "$target_dir" ]; then
