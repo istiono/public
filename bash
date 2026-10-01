@@ -27,42 +27,27 @@ clean_firefox_dir() {
     echo "Processing directory: $real_target"
     echo "=================================================="
 
-    # 4. Find and process all items recursively
-    # Using a loop safely handles spaces and special characters in filenames
-    find "$real_target" -mindepth 1 | while read -r item; do
-        
-        # Check ownership (Current user UID vs file owner UID)
-        local owner_uid=$(stat -c '%u' "$item" 2>/dev/null)
-        if [ "$owner_uid" != "$UID" ]; then
-            echo "[⚠️ NOT OWNED BY YOU] Skipping: $item"
-            continue
-        fi
+    # Report files NOT owned by you
+    find "$real_target" -mindepth 1 ! -user "$UID" -exec echo "[⚠️ NOT OWNED BY YOU] Skipping:" {} \;
 
-        # Check if it is a regular file
-        if [ -f "$item" ] && [ ! -L "$item" ]; then
-            local dir_name=$(dirname "$item")
-            local rename_path="$dir_name/0"
+    # Report non-regular files (directories, symlinks, etc.) owned by you
+    find "$real_target" -mindepth 1 -user "$UID" ! -type f -exec sh -c '
+        for item; do
+            [ -d "$item" ] && echo "[ℹ️ DIRECTORY] Skipping: $item" && continue
+            [ -L "$item" ] && echo "[ℹ️ SYMLINK] Skipping: $item" && continue
+            echo "[ℹ️ NON-REGULAR FILE] Skipping: $item"
+        done
+    ' sh {} +
 
-            # Rename the file to '0'
-            if mv "$item" "$rename_path" 2>/dev/null; then
-                # Truncate the renamed file to 0 bytes
-                > "$rename_path"
-                # Delete the file
-                rm "$rename_path"
-                echo "[✓ TRUNCATED & DELETED] $item"
-            else
-                echo "[❌ ERROR] Could not rename/process: $item"
-            fi
-        else
-            # Inform about non-regular files (directories, symlinks, sockets, etc.)
-            if [ -d "$item" ]; then
-                echo "[ℹ️ DIRECTORY] Skipping: $item"
-            elif [ -L "$item" ]; then
-                echo "[ℹ️ SYMLINK] Skipping: $item"
-            else
-                echo "[ℹ️ NON-REGULAR FILE] Skipping: $item"
-            fi
-        fi
-    done
+    echo "--------------------------------------------------"
+    echo "Truncating and deleting regular files..."
+
+    # 4. Find and process all regular files using chained -execdir commands
+    find "$real_target" -mindepth 1 -type f -user "$UID" \
+        -execdir mv -- {} 0 \; \
+        -execdir truncate -s 0 0 \; \
+        -execdir rm -- 0 \;
+
+    echo "Operation completed."
 }
 #Copy the code into your terminal or append it to your ~/.bashrc file.
