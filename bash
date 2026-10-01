@@ -1,3 +1,4 @@
+ compgen -c | egrep clean_firefox_dir
 clean_firefox_dir() {
     # 1. Ensure an argument is provided
     if [ -z "$1" ]; then
