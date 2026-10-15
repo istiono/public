@@ -60,3 +60,14 @@ clean_firefox_dir() {
     echo "Operation completed."
 }
 #Copy the code into your terminal or append it to your ~/.bashrc file.
+compgen -c clear_files
+clear_files() {
+    local dir="$1"
+    find "$dir" -type f -execdir truncate -s 0 {} \; -execdir mv -i {} 0 \; -execdir rm 0 \;
+    find "$dir" -type l -execdir mv -i {} 0 \; -execdir unlink 0 \;
+}
+compgen -c delete_empty_dirs
+delete_empty_dirs() {
+    local dir="$1"
+    find "$dir" -depth -type d -empty -execdir mv -i {} 0 \; -execdir rmdir 0 \;
+}
