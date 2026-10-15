@@ -59,5 +59,4 @@ clean_firefox_dir() {
 
     echo "Operation completed."
 }
-#Copy the code into your terminal or append it to your ~/.bashrc file.
 
