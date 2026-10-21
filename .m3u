@@ -1,0 +1,29 @@
+#!/bin/bash
+M3U_FILE="/media/sari/New Volume1/1/e/3.m3u"
+M3U_DIR=$(dirname "$M3U_FILE")
+REMOVED=0
+
+while IFS= read -r line; do
+    if [[ $line == #EXTINF* ]]; then
+        read -r media_path
+        
+        if [[ $media_path == /* ]]; then
+            full_path="$media_path"
+        else
+            full_path="$M3U_DIR/$media_path"
+        fi
+        
+        if [ ! -f "$full_path" ]; then
+            echo "Missing: $media_path"
+            ((REMOVED++))
+        fi
+    fi
+done < "$M3U_FILE"
+
+echo "Found $REMOVED missing entries."
+read -p "Remove them? (y/n) " -n 1 -r
+echo
+if [[ $REPLY =~ ^[Yy]$ ]]; then
+    # Run Method 2 script here
+fi
+
