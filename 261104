@@ -1,0 +1,46 @@
+extract_video_info() {
+    if [ $# -eq 0 ]; then
+        echo "Usage: extract_video_info <URL>"
+        return 1
+    fi
+    
+    local url="$1"
+    local temp_file=$(mktemp)
+    
+    echo "Downloading: $url"
+    curl -s "$url" -o "$temp_file"
+    
+    if [ ! -s "$temp_file" ]; then
+        echo "Error: Failed to download file"
+        rm "$temp_file"
+        return 1
+    fi
+    
+    echo ""
+    echo "Video Information"
+    echo "=========================================="
+    printf "%-10s | %-8s | %-12s\n" "Quality" "Format" "Size (MB)"
+    echo "=========================================="
+    
+    grep -oP '\(\d+p,?\s*[^,)]*,?\s*[\d.]+\s*MB\)' "$temp_file" | sed 's/[()]//g' | while read -r line; do
+        local quality=$(echo "$line" | grep -oP '^\d+p')
+        local format=$(echo "$line" | grep -oP '(AV1|h\.?264|h\.?265|VP9|HEVC)')
+        local size=$(echo "$line" | grep -oP '[\d.]+(?=\s*MB)')
+        
+        printf "%-10s | %-8s | %-12s\n" "$quality" "$format" "$size"
+    done | sort -V
+    
+    echo ""
+    echo "Summary:"
+    echo "--------"
+    
+    local av1_count=$(grep -o 'AV1' "$temp_file" | wc -l)
+    local h264_count=$(grep -o 'h\.?264' "$temp_file" | wc -l)
+    
+    echo "AV1 files: $av1_count"
+    echo "h264 files: $h264_count"
+    
+    rm "$temp_file"
+}
+extract_video_info "https://raw.githubusercontent.com/istiono/public/refs/heads/main/AV1_and_h264.html"
+
