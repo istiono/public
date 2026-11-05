@@ -35,7 +35,8 @@ extract_video_info() {
     echo "--------"
     
     local av1_count=$(grep -o 'AV1' "$temp_file" | wc -l)
-    local h264_count=$(grep -o 'h\.?264' "$temp_file" | wc -l)
+#    local h264_count=$(grep -o 'h\.?264' "$temp_file" | wc -l)
+    local h264_count=$(grep -o 'download-h264' "$temp_file" | wc -l)
     
     echo "AV1 files: $av1_count"
     echo "h264 files: $h264_count"
