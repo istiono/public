@@ -44,4 +44,11 @@ extract_video_info() {
     rm "$temp_file"
 }
 extract_video_info "https://raw.githubusercontent.com/istiono/public/refs/heads/main/AV1_and_h264.html"
-eporner2 https://www.eporner.com/video-7UG07LV7fTT/when-a-young-barrio-lass-moves-in-to-the-city-to-study/
+#eporner2 https://www.eporner.com/video-7UG07LV7fTT/when-a-young-barrio-lass-moves-in-to-the-city-to-study/
+fetch_comments() {
+    curl -s "https://githubusercontent.com" | \
+    grep -oE 'itemprop="commentText"[^>]*>([^<]+)|class="comment-hidden-text"[^>]*>([^<]+)' | \
+    sed -E 's/.*>//' | \
+    awk 'BEGIN {print "Comments (3)"} {print}'
+}
+fetch_comments https://raw.githubusercontent.com/istiono/public/refs/heads/main/AV1_and_h264.html
