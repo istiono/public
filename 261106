@@ -1,0 +1,78 @@
+summarize_qualities() {
+  local url="$1"
+
+  if [[ -z "$url" ]]; then
+    echo "Usage: summarize_qualities URL" >&2
+    return 1
+  fi
+
+  curl -fsSL -- "$url" \
+  | grep -oE '\([0-9]{3,4}p, [^)]*\)' \
+  | awk '
+    {
+      s = $0
+      gsub(/[()]/, "", s)
+      if (split(s, f, ", ") < 3) next
+      q = f[1]
+      item = f[2] ", " f[3]
+      key = q SUBSEP item
+      if (key in seen) next
+      seen[key] = 1
+      if (!(q in lines)) {
+        order[++m] = q
+        lines[q] = item
+      } else {
+        lines[q] = lines[q] " or " item
+      }
+    }
+    END {
+      for (i = 1; i <= m; i++) print order[i] ": " lines[order[i]]
+    }
+  '
+}
+summarize_qualities() {
+  local url="$1"
+  local quality="$2"
+
+  if [[ -z "$url" ]]; then
+    echo "Usage: summarize_qualities URL [QUALITY]" >&2
+    return 1
+  fi
+
+  [[ -z "$quality" ]] && quality="720p"
+  [[ "$quality" == *p ]] || quality="${quality}p"
+
+  local origin
+  origin=$(printf '%s\n' "$url" | grep -oE '^https?://[^/]+')
+
+  curl -fsSL -- "$url" \
+  | grep -oE '<a href="[^"]+"[^>]*>[^<]*\([0-9]{3,4}p, [^)]*\)' \
+  | awk -v base="$origin" -v want="$quality" '
+    {
+      if (!match($0, /href="[^"]+"/)) next
+      href = substr($0, RSTART + 6, RLENGTH - 7)
+      if (href ~ /^\//) href = base href
+
+      if (!match($0, /\([0-9]+p, [^)]*\)/)) next
+      s = substr($0, RSTART + 1, RLENGTH - 2)
+      if (split(s, f, ", ") < 3) next
+      if (f[1] != want) next
+
+      if (tolower(f[2]) == "av1") {
+        if (!av1) av1 = href
+      } else if (!other) {
+        other = href
+      }
+    }
+    END {
+      if (av1) print av1
+      else if (other) print other
+      else {
+        print "No link found for " want > "/dev/stderr"
+        exit 1
+      }
+    }
+  '
+}
+summarize_qualities "https://raw.githubusercontent.com/istiono/public/main/example"
+
