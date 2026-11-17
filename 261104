@@ -1,3 +1,4 @@
+#JANGAN INDEX INI
 extract_video_info() {
     if [ $# -eq 0 ]; then
         echo "Usage: extract_video_info <URL>"

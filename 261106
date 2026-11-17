@@ -1,3 +1,4 @@
+#JANGAN INDEX INI
 summarize_qualities() {
   local url="$1"
 
